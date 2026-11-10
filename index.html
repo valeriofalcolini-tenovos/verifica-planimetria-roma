@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Verifica Planimetria Roma</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Pre-verifica di una planimetria residenziale a Roma: requisiti igienico-sanitari (DM 5/7/1975, Regolamento Edilizio di Roma Capitale, Salva Casa) e checklist di conformità urbanistica e vincoli.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+/* Layout: cartiglio di tavola in testa, poi quattro pannelli di lavoro: tavola, vani, esito igienico, conformità urbanistica. */
+:root{
+  --paper:#f5f6f3; --sheet:#ffffff; --ink:#1b2326; --muted:#5d6a6e; --line:#d5dbd8;
+  --accent:#1f5c6b; --accent-soft:#e3eef0;
+  --ok:#2e7d4f; --ok-bg:#e5f3ea; --warn:#9a6400; --warn-bg:#fbf1dc; --bad:#b3261e; --bad-bg:#fbe5e3; --info:#4b5a8a; --info-bg:#e8ebf6;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-head:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#121718; --sheet:#1a2123; --ink:#e4ebec; --muted:#9aa8ab; --line:#2f3a3d;
+  --accent:#7cc0cf; --accent-soft:#1d3237;
+  --ok:#7dd3a0; --ok-bg:#163126; --warn:#f0c068; --warn-bg:#3a2d12; --bad:#f2a49d; --bad-bg:#3d1c1a; --info:#aab6e8; --info-bg:#22273d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#121718; --sheet:#1a2123; --ink:#e4ebec; --muted:#9aa8ab; --line:#2f3a3d;
+  --accent:#7cc0cf; --accent-soft:#1d3237;
+  --ok:#7dd3a0; --ok-bg:#163126; --warn:#f0c068; --warn-bg:#3a2d12; --bad:#f2a49d; --bad-bg:#3d1c1a; --info:#aab6e8; --info-bg:#22273d; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--f-body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+.wrap{max-width:1080px;margin:0 auto;display:grid;gap:20px}
+h1,h2,h3{font-family:var(--f-head);text-wrap:balance;margin:0}
+h2{font-size:1.15rem;font-weight:600}
+.muted{color:var(--muted)}
+button,select,input{font:inherit;color:inherit}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.cartiglio{border:1.5px solid var(--ink);background:var(--sheet);display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr}
+.cartiglio>div{padding:10px 14px;border-left:1px solid var(--ink);min-width:0}
+.cartiglio>div:first-child{border-left:0}
+.cartiglio .lbl{font:500 .68rem/1.2 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.cartiglio h1{font-size:1.5rem;font-weight:600;margin-top:2px}
+.cartiglio .val{font-family:var(--f-mono);font-size:.85rem;margin-top:4px;overflow-wrap:anywhere}
+@media (max-width:720px){.cartiglio{grid-template-columns:1fr 1fr}.cartiglio>div:first-child{grid-column:1/-1}.cartiglio>div:nth-child(n+2){border-top:1px solid var(--ink)}.cartiglio>div:nth-child(2),.cartiglio>div:nth-child(4){border-left:0}}
+
+.panel{background:var(--sheet);border:1px solid var(--line);border-radius:6px;padding:18px;display:grid;gap:14px;min-width:0}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.step{font:500 .72rem var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}}
+
+.drop{border:1.5px dashed var(--line);border-radius:6px;min-height:220px;display:grid;place-items:center;text-align:center;padding:16px;cursor:pointer;background:var(--paper)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop img{max-height:360px;width:auto;max-width:100%;border:1px solid var(--line);background:#fff}
+
+.fields{display:grid;gap:12px;align-content:start}
+.field{display:grid;gap:4px}
+.field label{font-size:.85rem;font-weight:500}
+.field small{color:var(--muted);font-size:.8rem}
+.field input,.field select{padding:7px 9px;border:1px solid var(--line);border-radius:4px;background:var(--sheet);max-width:260px}
+.check{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:4px}
+.check input{margin-top:4px}
+
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--sheet);padding:9px 16px;border-radius:4px;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:transparent;color:var(--accent)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.status{font-size:.88rem;color:var(--muted);min-height:1.3em}
+.status.err{color:var(--bad)}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:.88rem}
+th{font:500 .7rem var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px;border-bottom:1px solid var(--line);background:var(--paper)}
+td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td input,td select{width:100%;padding:6px 7px;border:1px solid transparent;border-radius:3px;background:transparent}
+td input:hover,td select:hover,td input:focus,td select:focus{border-color:var(--line);background:var(--sheet)}
+td input.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td.badges{white-space:nowrap}
+.del{border:0;background:none;color:var(--muted);cursor:pointer;padding:4px 8px;font-size:1.1rem}
+.tag{font:500 .7rem var(--f-mono);letter-spacing:.06em;text-transform:uppercase;background:var(--info-bg);color:var(--info);padding:2px 8px;border-radius:99px}
+.totals{display:flex;gap:18px;flex-wrap:wrap;font-size:.88rem}
+.totals b{font-family:var(--f-mono);font-weight:500;font-variant-numeric:tabular-nums}
+
+.chip{display:inline-flex;align-items:center;gap:5px;font:500 .72rem var(--f-mono);letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.s-pass{background:var(--ok-bg);color:var(--ok)}
+.s-fail{background:var(--bad-bg);color:var(--bad)}
+.s-warn,.s-tol{background:var(--warn-bg);color:var(--warn)}
+.s-check,.s-missing{background:var(--info-bg);color:var(--info)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:currentColor}
+.summary{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+.verdict{font-family:var(--f-head);font-size:1.3rem;font-weight:600}
+.checks{display:grid;border-top:1px solid var(--line)}
+.ck{display:grid;grid-template-columns:132px minmax(0,1fr);gap:12px;padding:12px 2px;border-bottom:1px solid var(--line)}
+.ck h3{font-family:var(--f-body);font-size:.95rem;font-weight:600}
+.ck p{margin:2px 0 0;font-size:.88rem;color:var(--muted)}
+.ck .ref{font:400 .75rem var(--f-mono);color:var(--muted);margin-top:4px}
+@media (max-width:520px){.ck{grid-template-columns:1fr;gap:6px}}
+.note{font-size:.82rem;color:var(--muted);max-width:78ch;margin:0}
+.note b{color:var(--ink)}
+.legend{display:flex;gap:8px;flex-wrap:wrap}
+
+.urb{display:grid;border-top:1px solid var(--line)}
+.uq{display:grid;grid-template-columns:minmax(0,1fr) 170px;gap:8px 16px;padding:14px 2px;border-bottom:1px solid var(--line);align-items:start}
+.uq h3{font-family:var(--f-body);font-size:.95rem;font-weight:600}
+.uq p{margin:3px 0 0;font-size:.86rem;color:var(--muted)}
+.uq .src{font:400 .75rem var(--f-mono);color:var(--muted);margin-top:6px;display:flex;gap:4px 12px;flex-wrap:wrap}
+.uq select{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:4px;background:var(--sheet)}
+.uq .out{grid-column:1/-1;font-size:.86rem;padding:8px 10px;border-radius:4px}
+.uq .out.s-fail{background:var(--bad-bg);color:var(--bad)}
+.uq .out.s-warn{background:var(--warn-bg);color:var(--warn)}
+.uq .out.s-pass{background:var(--ok-bg);color:var(--ok)}
+@media (max-width:620px){.uq{grid-template-columns:1fr}}
+.can{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.can div{border:1px solid var(--line);border-radius:4px;padding:12px 14px}
+.can h3{font-size:.95rem;font-family:var(--f-body);font-weight:600;margin-bottom:4px}
+.can ul{margin:0;padding-left:18px;font-size:.86rem;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="cartiglio" aria-label="Cartiglio">
+    <div><div class="lbl">Elaborato</div><h1>Verifica Planimetria Roma</h1></div>
+    <div><div class="lbl">Comune</div><div class="val">Roma Capitale</div></div>
+    <div><div class="lbl">Immobile</div><div class="val" id="cAddr">Alloggio esistente</div></div>
+    <div><div class="lbl">Riferimenti</div><div class="val">DM 5/7/1975 · R.E. Roma · DPR 380/01</div></div>
+  </header>
+
+  <section class="panel" aria-labelledby="h-can">
+    <div><div class="step">0 · Cosa si può verificare</div><h2 id="h-can">Dalla planimetria si legge la parte igienico-sanitaria, non la legittimità</h2></div>
+    <div class="can">
+      <div><h3>Verificabile dalla planimetria</h3><ul><li>Altezze, superfici e volumi dei vani</li><li>Rapporti aeroilluminanti (1/8)</li><li>Dotazione bagno e cucina</li><li>Superficie per abitante, monolocali</li><li>Requisiti R.E. Roma artt. 38-43</li></ul></div>
+      <div><h3>Richiede documenti</h3><ul><li>Stato legittimo: titoli edilizi e condoni (art. 9-bis DPR 380/01)</li><li>Destinazione d'uso legittima</li><li>Agibilità (SCA o certificato)</li><li>Coerenza con la planimetria catastale</li></ul></div>
+      <div><h3>Richiede l'ubicazione</h3><ul><li>Componente PRG e tessuto (NTA 2026)</li><li>Città Storica, Carta per la Qualità</li><li>Vincoli culturali (Parte II D.Lgs. 42/2004)</li><li>Vincoli paesaggistici (PTPR Lazio)</li></ul></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-plan">
+    <div class="panel-head"><div><div class="step">1 · Tavola</div><h2 id="h-plan">Carica la planimetria</h2></div>
+      <span class="muted" style="font-size:.85rem">PDF, JPG, PNG o WebP. Ritaglia sulla pianta per una lettura migliore.</span></div>
+    <div class="grid2">
+      <div style="display:grid;gap:10px;min-width:0">
+        <label class="drop" id="drop" for="file"><div id="dropInner"><strong>Trascina qui la planimetria</strong><br><span class="muted">oppure clicca per scegliere un file</span></div></label>
+        <input type="file" id="file" accept="application/pdf,image/png,image/jpeg,image/webp" hidden>
+        <div id="fileInfo" class="muted" style="font-size:.82rem"></div>
+      </div>
+      <div class="fields">
+        <div class="field"><label for="pos">Posizione dell'unità</label>
+          <select id="pos"><option value="normal">Piano rialzato o superiore</option><option value="ground">Piano terra</option><option value="semi">Seminterrato</option><option value="attic">Sottotetto</option></select></div>
+        <div class="field"><label for="occ">Abitanti previsti</label><input type="number" id="occ" min="1" step="1" placeholder="Automatico"><small>Vuoto = calcolato dalle camere (singola 1, doppia 2).</small></div>
+        <div class="field"><label for="hDefault">Altezza interna se non indicata (m)</label><input type="number" id="hDefault" min="1.5" max="6" step="0.01" placeholder="es. 2,70"><small>Nel sottotetto inserisci l'altezza media.</small></div>
+        <div class="field"><label for="bathFull">Il bagno principale ha WC, bidet, doccia o vasca, lavabo</label>
+          <select id="bathFull"><option value="">Non so</option><option value="yes">Sì</option><option value="no">No</option></select></div>
+        <label class="check" for="salva"><input type="checkbox" id="salva"><span><strong>Può applicarsi la deroga Salva Casa</strong><br><small class="muted">Dimensioni attuali legittime (ante 5/7/1975 o da condono) e lavori di recupero o miglioramento igienico-sanitario. Roma Capitale la esclude per cambi d'uso, nuove costruzioni e demolizioni con ricostruzione.</small></span></label>
+        <div class="row" id="aiRow" hidden>
+          <button class="btn" id="readBtn" disabled>Leggi la planimetria con Claude</button>
+          <button class="btn ghost" id="stopBtn" hidden>Interrompi</button>
+        </div>
+        <div class="status" id="status" role="status"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-rooms">
+    <div class="panel-head"><div><div class="step">2 · Vani</div><h2 id="h-rooms">Controlla e correggi le misure</h2></div><span id="exampleTag" class="tag">Dati di esempio</span></div>
+    <p class="note" id="scaleNote">Inserisci un vano per riga. Le superfici sono utili nette (m²), la superficie finestrata è la parte apribile e vetrata (m²). Confronta sempre i valori con la tavola.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th style="width:22%">Vano</th><th style="width:24%">Tipo</th><th>Sup. m²</th><th>Alt. m</th><th>Finestra m²</th><th style="width:15%">Esito</th><th></th></tr></thead>
+      <tbody id="rows"></tbody></table></div>
+    <div class="row" style="justify-content:space-between"><button class="btn ghost" id="addBtn">Aggiungi vano</button><div class="totals" id="totals"></div></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-verdict">
+    <div class="panel-head"><div><div class="step">3 · Esito igienico-sanitario</div><h2 id="h-verdict">Requisiti dell'alloggio</h2></div><button class="btn ghost" id="copyBtn">Copia relazione</button></div>
+    <div class="summary" id="summary"></div>
+    <div class="legend"><span class="chip s-pass"><span class="dot"></span>Conforme</span><span class="chip s-tol"><span class="dot"></span>Tolleranza 2% / deroga</span><span class="chip s-fail"><span class="dot"></span>Non conforme</span><span class="chip s-check"><span class="dot"></span>Da verificare</span></div>
+    <div class="checks" id="checks"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-urb">
+    <div class="panel-head"><div><div class="step">4 · Oltre la planimetria</div><h2 id="h-urb">Conformità urbanistica e vincoli</h2></div><span class="muted" id="urbSum" style="font-size:.88rem"></span></div>
+    <p class="note">La planimetria da sola non dimostra la conformità urbanistica. Rispondi a ogni voce dopo aver consultato la fonte indicata: lo strumento ti dice cosa comporta la risposta.</p>
+    <div class="urb" id="urb"></div>
+  </section>
+
+  <p class="note"><b>Pre-verifica, non asseverazione.</b> La conformità igienico-sanitaria e urbanistica è asseverata da un tecnico abilitato nella pratica edilizia o nella SCA. Fonti applicate: DM Sanità 5/7/1975; Regolamento Generale Edilizio di Roma (Del. C.C. 5261/1934 e s.m.i., artt. 38-43, fino alla Del. A.C. 90/2026); DPR 380/2001 artt. 9-bis, 23-ter, 24 c. 5-bis, 34-bis; indicazioni di Roma Capitale sul Salva Casa (prot. QI/2024/0205723); variante NTA del PRG approvata il 23/7/2026; PTPR Lazio (DCR 5/2021, rettifica DGR 1078/2025). Non sono verificati: fattore di luce diurna, impianti, Titolo III bis del R.E. (riguarda nuove costruzioni, demolizioni con ricostruzione e ampliamenti oltre il 15% di SUL), norme antincendio e barriere architettoniche. Aggiornato a novembre 2026.</p>
+</div>
+
+<script>
+const TYPES={
+  living:{label:"Soggiorno",hab:true},
+  studio:{label:"Monolocale (vano unico)",hab:true},
+  bed1:{label:"Camera singola",hab:true,cap:1},
+  bed2:{label:"Camera doppia",hab:true,cap:2},
+  kitchen:{label:"Cucina",hab:true,kitchen:true},
+  study:{label:"Studio / altro vano abitabile",hab:true},
+  kitchenette:{label:"Angolo cottura",svc:true},
+  bath:{label:"Bagno",svc:true},
+  wc:{label:"WC / antibagno",svc:true},
+  hall:{label:"Corridoio / disimpegno / ingresso",svc:true},
+  storage:{label:"Ripostiglio",svc:true},
+  outdoor:{label:"Balcone / terrazzo / loggia",out:true}
+};
+const EXAMPLE=[
+  {name:"Soggiorno",type:"living",area:18.6,height:2.75,window:2.6},
+  {name:"Cucina",type:"kitchen",area:7.2,height:2.75,window:1.2},
+  {name:"Camera",type:"bed2",area:13.4,height:2.75,window:1.8},
+  {name:"Cameretta",type:"bed1",area:9.1,height:2.75,window:0.9},
+  {name:"Bagno",type:"bath",area:4.3,height:2.75,window:0},
+  {name:"Disimpegno",type:"hall",area:3.5,height:2.42,window:null},
+  {name:"Balcone",type:"outdoor",area:4,height:null,window:null}
+];
+const URB=[
+  {id:"legit",q:"Stato legittimo verificato",d:"Titoli edilizi (licenza, concessione, permesso, SCIA, CILA) o condono reperiti e corrispondenti alla planimetria. La planimetria catastale non è un titolo: vale come prova solo per immobili realizzati quando il titolo non era richiesto.",src:[["Art. 9-bis DPR 380/2001",""],["Accesso agli atti, Roma Capitale","https://www.urbanistica.comune.roma.it"]],
+   opts:{yes:["pass","Stato legittimo documentato: la planimetria può essere confrontata con l'ultimo titolo."],tol:["warn","Difformità entro le tolleranze (2% ordinario; fino al 6% per opere ante 24/5/2024, ma sempre 2% per misure igienico-sanitarie): dichiarabili dal tecnico, art. 34-bis."],no:["fail","Difformità oltre le tolleranze: serve sanatoria (art. 36 o 36-bis DPR 380) prima di qualsiasi altro intervento o atto."],unk:["check","Senza titoli non si può dichiarare la conformità urbanistica. Richiedi l'accesso agli atti al Dipartimento Urbanistica e al Municipio."]}},
+  {id:"use",q:"Destinazione d'uso residenziale legittima",d:"Risulta dal titolo edilizio o, in mancanza, dalla classificazione catastale d'impianto. Il cambio verso residenziale segue l'art. 23-ter DPR 380 e, a Roma, le NTA 2026.",src:[["Art. 23-ter DPR 380/2001",""]],
+   opts:{yes:["pass","Uso residenziale legittimo."],no:["warn","Serve un cambio di destinazione d'uso: le NTA 2026 prevedono il contributo straordinario e, in Città Storica, il 20% a housing sociale o l'onere di valorizzazione. Nei locali convertiti a residenza non può avviarsi attività extralberghiera. La deroga Salva Casa sulle altezze non si applica."],unk:["check","Verifica la destinazione sul titolo edilizio."]}},
+  {id:"agib",q:"Agibilità",d:"Certificato di agibilità (o abitabilità) o SCA depositata per lo stato attuale.",src:[["Art. 24 DPR 380/2001",""]],
+   opts:{yes:["pass","Agibilità presente per lo stato attuale."],no:["warn","Dopo i lavori serve la SCA, con asseverazione dei requisiti igienico-sanitari verificati nella sezione 3."],unk:["check","Cerca il certificato negli atti del fabbricato o presso il Municipio."]}},
+  {id:"prg",q:"Componente PRG e tessuto",d:"Individua la componente del PRG 2008 (Città Storica, Città consolidata, da ristrutturare, ecc.) e il tessuto. La variante NTA approvata il 23/7/2026 modifica 67 articoli: verifica il testo coordinato e la data di efficacia.",src:[["Geoportale e PRG, Roma Capitale","https://www.urbanistica.comune.roma.it"]],
+   opts:{cs:["warn","Città Storica: nessun aumento di volume; frazionamenti e accorpamenti con parere della Soprintendenza statale e divieto di nuove strutture extralberghiere nelle unità interessate; regole diverse per tessuto. Il centro storico è anche sito UNESCO."],other:["pass","Fuori dalla Città Storica: verifica le regole del tessuto per frazionamenti e cambi d'uso. Il premio del 20% vale solo per demolizione e ricostruzione della SUL legittima."],unk:["check","Senza ubicazione non si può stabilire quali NTA si applicano."]}},
+  {id:"cq",q:"Carta per la Qualità",d:"Edifici e complessi di pregio individuati dalla Carta per la Qualità del PRG: gli interventi devono rispettarne i caratteri.",src:[["Elaborati G1 del PRG, Roma Capitale","https://www.urbanistica.comune.roma.it"]],
+   opts:{yes:["warn","Edificio in Carta per la Qualità: interventi su parti esterne e strutturali da concordare; per gli interni verifica le prescrizioni della scheda."],no:["pass","Non incluso nella Carta per la Qualità."],unk:["check","Consulta gli elaborati della Carta per la Qualità."]}},
+  {id:"cult",q:"Vincolo culturale (Parte II D.Lgs. 42/2004)",d:"Immobile dichiarato di interesse culturale. Il vincolo deve risultare anche nell'atto di provenienza (prelazione artt. 59-60).",src:[["Vincoli in Rete, MiC","https://vincoliinrete.beniculturali.it"],["Soprintendenza Speciale di Roma","https://www.soprintendenzaspecialeroma.it"]],
+   opts:{yes:["fail","Immobile vincolato: anche le opere interne richiedono l'autorizzazione della Soprintendenza (art. 21 D.Lgs. 42/2004)."],no:["pass","Nessun vincolo culturale risultante."],unk:["check","Cerca l'indirizzo o i dati catastali su Vincoli in Rete; in caso di dubbio chiedi alla Soprintendenza."]}},
+  {id:"pae",q:"Vincolo paesaggistico (Parte III D.Lgs. 42/2004, PTPR Lazio)",d:"Beni paesaggistici dichiarati o tutelati per legge, cartografati nelle tavole B del PTPR Lazio (DCR 5/2021, ultima rettifica DGR 1078/2025).",src:[["PTPR Lazio","https://regione.lazio.it/cittadini/urbanistica/pianificazione-paesaggistica"],["SITAP, MiC","http://sitap.beniculturali.it"]],
+   opts:{yes:["warn","Area vincolata: le opere interne che non alterano l'aspetto esteriore sono escluse dall'autorizzazione paesaggistica (DPR 31/2017, All. A, A.1); facciate, infissi, coperture e balconi la richiedono."],no:["pass","Nessun vincolo paesaggistico risultante."],unk:["check","Verifica sulle tavole B del PTPR e su SITAP; il certificato di destinazione urbanistica lo conferma."]}},
+  {id:"arch",q:"Vincoli archeologici o altre tutele",d:"Zone di interesse archeologico, ambiti di tutela, vincolo idrogeologico, fasce di rispetto.",src:[["Vincoli in Rete, MiC","https://vincoliinrete.beniculturali.it"]],
+   opts:{yes:["warn","Interventi su strutture, scavi o fondazioni richiedono il parere dell'ente competente."],no:["pass","Nessuna ulteriore tutela risultante."],unk:["check","Verifica con il certificato di destinazione urbanistica."]}}
+];
+const ANS={legit:[["","Da verificare"],["yes","Sì, conforme"],["tol","Sì, entro tolleranze"],["no","No, difforme"],["unk","Non so"]],prg:[["","Da verificare"],["cs","Città Storica"],["other","Altra componente"],["unk","Non so"]]};
+const ANS_DEF=[["","Da verificare"],["yes","Sì"],["no","No"],["unk","Non so"]];
+
+let rooms=[], isExample=true, images=[], sampleFn=null, ctl=null, urbAns={}, meta={};
+const $=id=>document.getElementById(id);
+const fmt=(v,d=2)=>v==null||isNaN(v)?"–":Number(v).toLocaleString("it-IT",{minimumFractionDigits:d,maximumFractionDigits:d});
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num=v=>v===""||v==null?null:Number(v);
+
+function save(){try{localStorage.setItem("vpr-it",JSON.stringify({rooms,isExample,urbAns,meta,occ:$("occ").value,h:$("hDefault").value,bath:$("bathFull").value,salva:$("salva").checked,pos:$("pos").value}))}catch(e){}}
+function load(){try{const s=JSON.parse(localStorage.getItem("vpr-it")||"null");if(s&&Array.isArray(s.rooms)){rooms=s.rooms;isExample=!!s.isExample;urbAns=s.urbAns||{};meta=s.meta||{};$("occ").value=s.occ||"";$("hDefault").value=s.h||"";$("bathFull").value=s.bath||"";$("salva").checked=!!s.salva;$("pos").value=s.pos||"normal";return true}}catch(e){}return false}
+
+/* ---------- regole ---------- */
+function cmpMin(v,min){if(v==null||isNaN(v))return"missing";if(v>=min)return"pass";if(v>=min*0.98)return"tol";return"fail"}
+
+function evaluate(){
+  const salva=$("salva").checked, pos=$("pos").value, hDef=num($("hDefault").value);
+  const R=rooms.map(r=>({...r,area:num(r.area),height:num(r.height)??hDef,window:num(r.window),t:TYPES[r.type]||TYPES.study}));
+  const checks=[], perRoom=R.map(()=>[]);
+  const add=(status,title,detail,ref,idx)=>{checks.push({status,title,detail,ref});if(idx!=null)perRoom[idx].push(status)};
+  const isMono=R.some(r=>r.type==="studio");
+
+  R.forEach((r,i)=>{
+    const nm=r.name||r.t.label;
+    if(r.t.out||r.type==="kitchenette")return;
+    // altezza
+    let minH=r.t.hab?2.70:2.40, ref="DM 5/7/1975 art. 1 · R.E. Roma artt. 40, 41, 42", why=r.t.hab?"vani abitabili":"bagni, corridoi e ripostigli";
+    if(pos==="semi"&&r.t.hab){minH=3.00;ref="R.E. Roma art. 38";why="vani abitabili in seminterrato"}
+    if(pos==="attic"&&r.t.hab){minH=2.50;ref="R.E. Roma art. 43";why="altezza media dei vani abitabili nel sottotetto"}
+    const s=cmpMin(r.height,minH);
+    if(s==="missing")add("missing",`${nm}: altezza`,"Altezza non indicata. Inseriscila nella tabella o imposta un'altezza predefinita.",ref,i);
+    else if(s==="pass")add("pass",`${nm}: altezza ${fmt(r.height)} m`,`Minimo ${fmt(minH)} m per ${why}.`,ref,i);
+    else if(s==="tol")add("tol",`${nm}: altezza ${fmt(r.height)} m`,`Sotto ${fmt(minH)} m ma entro la tolleranza del 2% (≥ ${fmt(minH*0.98)} m).`,ref+" · DPR 380/01 art. 34-bis",i);
+    else if(r.t.hab&&pos==="normal"&&r.height>=2.40){
+      if(salva)add("warn",`${nm}: altezza ${fmt(r.height)} m`,"Sotto 2,70 m. Ammissibile solo con la deroga Salva Casa (minimo 2,40 m) e tutte le sue condizioni, compresi il requisito di adattabilità e i lavori di miglioramento igienico-sanitario.","DPR 380/01 art. 24 c. 5-bis · Roma Capitale QI/2024/0205723",i);
+      else add("fail",`${nm}: altezza ${fmt(r.height)} m`,"Sotto il minimo di 2,70 m per i vani abitabili. La deroga Salva Casa (fino a 2,40 m) vale solo con dimensioni legittime e lavori di miglioramento: spunta la casella se ricorre.",ref,i);
+    } else add("fail",`${nm}: altezza ${fmt(r.height)} m`,`Sotto il minimo di ${fmt(minH)} m per ${why}.`,ref,i);
+
+    // superfici
+    let minA=null,w="";
+    if(r.type==="bed1"||r.type==="study"){minA=9;w=r.type==="bed1"?"camera singola":"vano abitabile"}
+    if(r.type==="bed2"){minA=14;w="camera doppia"}
+    if(r.type==="living"&&!isMono){minA=14;w="soggiorno"}
+    if(minA){
+      const sa=cmpMin(r.area,minA);
+      add(sa,`${nm}: superficie ${fmt(r.area)} m²`,{pass:`Rispetta il minimo di ${minA} m² per ${w}.`,tol:`Sotto ${minA} m² ma entro la tolleranza del 2% (≥ ${fmt(minA*0.98)} m²).`,fail:`Sotto il minimo di ${minA} m² per ${w}.`+(r.type==="bed2"&&r.area>=9?" Sarebbe ammissibile come camera singola (9 m²).":""),missing:"Superficie non indicata."}[sa],"DM 5/7/1975 art. 2 · R.E. Roma art. 40 b-c",i);
+    }
+    // cucina: volume e finestra
+    if(r.t.kitchen){
+      const vol=r.area!=null&&r.height!=null?r.area*r.height:null;
+      const sv=cmpMin(vol,15);
+      add(sv,`${nm}: volume ${vol==null?"–":fmt(vol,1)} m³`,sv==="missing"?"Servono superficie e altezza.":sv==="fail"?"La cucina deve avere un volume di almeno 15 m³.":"Volume minimo 15 m³ rispettato.","R.E. Roma art. 41 a",i);
+      if(r.window!=null){const sk=r.window===0?"fail":cmpMin(r.window,1.5);add(sk,`${nm}: finestra ${fmt(r.window)} m²`,sk==="pass"?"Almeno una finestra apribile di 1,50 m² verso l'esterno.":"La cucina deve avere almeno una finestra apribile di 1,50 m² verso l'esterno.","R.E. Roma art. 41 a",i)}
+    }
+    // rapporto aeroilluminante
+    if(r.t.hab){
+      const minR=8;
+      if(r.window==null)add("missing",`${nm}: superficie finestrata`,"Non indicata. I vani abitabili richiedono finestre apribili di almeno 1/8 della superficie del pavimento.","DM 5/7/1975 art. 5 · R.E. Roma art. 40 f",i);
+      else if(r.area!=null){
+        const need=r.area/minR, sw=r.window===0?"fail":cmpMin(r.window,need);
+        add(sw,`${nm}: finestra ${fmt(r.window)} m² (1/${r.window>0?fmt(r.area/r.window,1):"∞"})`,sw==="pass"?`Serve almeno ${fmt(need)} m² (1/8). Il fattore di luce diurna medio (≥ 2%) resta da verificare.`:sw==="tol"?`Appena sotto ${fmt(need)} m², entro la tolleranza del 2%.`:`Servono almeno ${fmt(need)} m² di superficie finestrata apribile (1/8 di ${fmt(r.area)} m²), con affaccio su spazio esterno.`,pos==="semi"?"R.E. Roma art. 38 · DM 5/7/1975 art. 5":"DM 5/7/1975 art. 5 · R.E. Roma art. 40 f",i);
+      }
+    }
+    // ripostiglio con finestra grande
+    if(r.type==="storage"&&r.window>4)add("warn",`${nm}: finestra ${fmt(r.window)} m²`,"Un locale con finestra apribile oltre 4 m² non può essere classificato come ripostiglio: va considerato vano abitabile.","R.E. Roma art. 42 b",i);
+  });
+
+  if(!isMono){const ok=R.some(r=>r.type==="living");add(ok?"pass":"fail","Presenza del soggiorno",ok?"L'alloggio ha un soggiorno.":"Nessun vano è indicato come soggiorno: ogni alloggio deve averne uno di almeno 14 m², salvo i monolocali.","DM 5/7/1975 art. 2 · R.E. Roma art. 40 c")}
+
+  // abitanti e superficie complessiva
+  const cap=R.reduce((s,r)=>s+(r.t.cap||0),0);
+  let occ=num($("occ").value); const occAuto=!occ; if(!occ)occ=isMono?1:Math.max(1,cap);
+  const total=R.filter(r=>!r.t.out).reduce((s,r)=>s+(r.area||0),0);
+  const pers=n=>n===1?"1 persona":`${n} persone`;
+  if(isMono){
+    if(occ>2)add("fail",`Monolocale per ${pers(occ)}`,"Il monolocale è ammesso per una o due persone.","DM 5/7/1975 art. 3 · R.E. Roma art. 40 d");
+    else{const base=occ===1?28:38, sc=occ===1?20:28, s=cmpMin(total,base);
+      if(s==="fail"&&total>=sc&&salva)add("warn",`Superficie ${fmt(total)} m² per ${pers(occ)}`,`Sotto ${base} m² ma sopra il minimo Salva Casa di ${sc} m²: ammissibile solo con tutte le condizioni della deroga.`,"DPR 380/01 art. 24 c. 5-bis");
+      else add(s,`Superficie ${fmt(total)} m² per ${pers(occ)}`,s==="pass"?`Minimo per monolocale ${base} m² compresi i servizi.`:s==="tol"?`Entro il 2% del minimo di ${base} m².`:`Sotto il minimo di ${base} m² per monolocale.`+(total>=sc?` Il Salva Casa consente fino a ${sc} m² se ne ricorrono le condizioni.`:""),"DM 5/7/1975 art. 3 · R.E. Roma art. 40 d")}
+  } else {
+    const need=14*Math.min(occ,4)+10*Math.max(0,occ-4), s=cmpMin(total,need);
+    add(s,`Superficie ${fmt(total)} m² per ${pers(occ)}${occAuto?" (dai posti letto)":""}`,s==="pass"?`Servono almeno ${need} m²: 14 m² per ciascuno dei primi quattro abitanti, 10 m² per ogni successivo.`:s==="tol"?`Entro il 2% dei ${need} m² richiesti.`:`Servono almeno ${need} m² per ${pers(occ)}.`,"DM 5/7/1975 art. 2 · R.E. Roma art. 40 a");
+    if(!occAuto&&cap&&occ>cap)add("warn","Abitanti oltre i posti letto",`Le camere offrono ${cap} posti letto per ${pers(occ)} dichiarate.`,"DM 5/7/1975 art. 2");
+  }
+
+  // bagni
+  const baths=R.filter(r=>r.type==="bath");
+  if(!baths.length)add("fail","Bagno","Nessun bagno indicato: ne serve almeno uno.","DM 5/7/1975 art. 7");
+  else{
+    const bf=$("bathFull").value;
+    add(bf==="yes"?"pass":bf==="no"?"fail":"check","Dotazione del bagno",bf==="yes"?"Almeno un bagno con WC, bidet, doccia o vasca e lavabo.":bf==="no"?"Almeno un bagno deve avere WC, bidet, doccia o vasca e lavabo.":"Conferma che un bagno abbia WC, bidet, doccia o vasca e lavabo.","DM 5/7/1975 art. 7");
+    baths.concat(R.filter(r=>r.type==="wc")).forEach(b=>{if(!b.window)add("check",`${b.name||"Bagno"}: senza finestra`,"Ammesso solo con aspirazione meccanica (ventilazione forzata). Verifica che sia prevista.","R.E. Roma art. 41 b · L. 166/1975 art. 18")});
+    add("check","Accesso al bagno","Verifica che il bagno non si apra direttamente sulla cucina o sul soggiorno senza antibagno o disimpegno, secondo le indicazioni della ASL e del Municipio.","Regolamento d'igiene / prassi ASL Roma");
+  }
+  R.forEach((r,i)=>{if(r.type==="kitchenette")add("check",`${r.name||"Angolo cottura"}`,"L'angolo cottura annesso al soggiorno deve comunicare ampiamente con esso ed essere dotato di aspirazione forzata sui fornelli.","DM 5/7/1975 art. 6",i)});
+  if(!R.some(r=>r.t.kitchen||r.type==="kitchenette"))add("check","Cucina","Nessuna cucina o angolo cottura indicati.","DM 5/7/1975 art. 6");
+  add("check","Affacci su chiostrine","Le finestre dei vani abitabili non possono affacciare su chiostrine (ammesse solo per scale, bagni e corridoi). Controlla gli affacci sulla tavola.","R.E. Roma art. 32");
+  if(pos==="ground")add("check","Piano terra","Le abitazioni al piano terra devono essere sopraelevate di almeno 1 m sul piano stradale e poggiare su vespaio o cantine aerate.","R.E. Roma art. 39");
+  if(pos==="semi")add("check","Seminterrato","Pavimento sopraelevato su vespaio aerato di almeno 0,30 m, intercapedine aerata di almeno 50 cm lungo i muri contro terra, locale emergente per almeno metà dell'altezza.","R.E. Roma art. 38");
+  if(pos==="attic")add("check","Sottotetto","Volume di almeno 25 m³ per vano, altezza minima 2 m all'imposta, camera d'aria ventilata di almeno 25 cm. Valuta anche la L.R. Lazio sul recupero dei sottotetti.","R.E. Roma art. 43");
+  if(salva)add("check","Condizioni della deroga Salva Casa","Servono dimensioni esistenti legittime (ante 1975 o da condono), lavori di recupero o miglioramento igienico-sanitario e il requisito di adattabilità. La deroga non sana opere abusive.","Roma Capitale QI/2024/0205723");
+  return {checks,perRoom,total,occ,cap,isMono};
+}
+
+/* ---------- interfaccia ---------- */
+const LABEL={pass:"Conforme",fail:"Non conforme",warn:"Deroga",tol:"Tolleranza 2%",check:"Da verificare",missing:"Dato mancante"};
+const RANK={fail:5,warn:4,tol:3,missing:2,check:1,pass:0};
+const chip=s=>`<span class="chip s-${s}"><span class="dot"></span>${LABEL[s]}</span>`;
+
+function renderRows(){
+  const opts=Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("");
+  $("rows").innerHTML=rooms.map((r,i)=>`<tr data-i="${i}">
+    <td><input id="n${i}" aria-label="Nome vano" value="${esc(r.name)}" data-k="name"></td>
+    <td><select id="t${i}" aria-label="Tipo di vano" data-k="type">${opts}</select></td>
+    <td><input id="a${i}" class="num" aria-label="Superficie m²" type="number" step="0.01" min="0" value="${r.area??""}" data-k="area"></td>
+    <td><input id="h${i}" class="num" aria-label="Altezza m" type="number" step="0.01" min="0" value="${r.height??""}" data-k="height" placeholder="${esc($("hDefault").value)}"></td>
+    <td><input id="w${i}" class="num" aria-label="Superficie finestrata m²" type="number" step="0.01" min="0" value="${r.window??""}" data-k="window"></td>
+    <td class="badges" id="b${i}"></td>
+    <td><button class="del" aria-label="Rimuovi vano" data-del="${i}">×</button></td></tr>`).join("");
+  rooms.forEach((r,i)=>{$("t"+i).value=TYPES[r.type]?r.type:"study"});
+  $("exampleTag").hidden=!isExample;
+  update();
+}
+function update(){
+  const {checks,perRoom,total,occ,cap,isMono}=evaluate();
+  perRoom.forEach((ss,i)=>{const el=$("b"+i);if(!el)return;const t=TYPES[rooms[i]?.type];
+    if(!ss.length){el.innerHTML=`<span class="muted" style="font-size:.8rem">${t&&t.out?"Non computato":"–"}</span>`;return}
+    el.innerHTML=chip(ss.reduce((a,b)=>RANK[b]>RANK[a]?b:a,"pass"))});
+  $("totals").innerHTML=`<span>Superficie utile <b>${fmt(total)} m²</b></span><span>Posti letto <b>${cap}</b></span><span>Abitanti considerati <b>${occ}</b></span>${isMono?"<span><b>Monolocale</b></span>":""}`;
+  const n=s=>checks.filter(c=>c.status===s).length, f=n("fail"), w=n("warn")+n("tol"), c=n("check")+n("missing");
+  const v=f?`Non conforme · ${f} ${f>1?"criticità":"criticità"}`:w?"Conforme con deroghe o tolleranze":c?"Nessuna violazione · voci da verificare":"Conforme ai requisiti verificati";
+  $("summary").innerHTML=`<span class="verdict" style="color:var(${f?"--bad":w?"--warn":"--ok"})">${v}</span><span class="muted" style="font-size:.88rem">${n("pass")} conformi · ${f} non conformi · ${w} deroga/tolleranza · ${c} da verificare</span>${isExample?' <span class="tag">Dati di esempio</span>':""}`;
+  const sorted=[...checks].sort((a,b)=>RANK[b.status]-RANK[a.status]);
+  $("checks").innerHTML=sorted.map(c=>`<div class="ck"><div>${chip(c.status)}</div><div><h3>${esc(c.title)}</h3><p>${esc(c.detail)}</p><div class="ref">${esc(c.ref)}</div></div></div>`).join("");
+  window.__report=sorted;
+  $("cAddr").textContent=meta.address||meta.floor?[meta.address,meta.floor].filter(Boolean).join(" · "):"Alloggio esistente";
+  save();
+}
+function renderUrb(){
+  $("urb").innerHTML=URB.map(u=>{const a=ANS[u.id]||ANS_DEF;return `<div class="uq"><div><h3>${esc(u.q)}</h3><p>${esc(u.d)}</p><div class="src">${u.src.map(([t,h])=>h?`<a href="${h}" target="_blank" rel="noopener">${esc(t)}</a>`:`<span>${esc(t)}</span>`).join("")}</div></div>
+    <select id="u_${u.id}" data-u="${u.id}" aria-label="${esc(u.q)}">${a.map(([v,l])=>`<option value="${v}">${l}</option>`).join("")}</select>
+    <div class="out" id="o_${u.id}" hidden></div></div>`}).join("");
+  URB.forEach(u=>{$("u_"+u.id).value=urbAns[u.id]||"";showUrb(u.id)});
+  urbSummary();
+}
+function showUrb(id){const u=URB.find(x=>x.id===id), v=urbAns[id]||"", o=$("o_"+id);const r=v&&u.opts[v];
+  if(!r){o.hidden=true;return}o.hidden=false;o.className="out s-"+(r[0]==="check"?"warn":r[0]);o.textContent=r[1]}
+function urbSummary(){const vals=URB.map(u=>{const v=urbAns[u.id];return v&&u.opts[v]?u.opts[v][0]:"open"});
+  const f=vals.filter(x=>x==="fail").length, open=vals.filter(x=>x==="open"||x==="check").length;
+  $("urbSum").textContent=f?`${f} ${f>1?"voci bloccanti":"voce bloccante"} · ${open} da verificare`:open?`${open} voci da verificare su ${URB.length}`:"Tutte le voci risolte"}
+$("urb").addEventListener("change",e=>{const id=e.target.dataset.u;if(!id)return;urbAns[id]=e.target.value;showUrb(id);urbSummary();save()});
+
+$("rows").addEventListener("input",e=>{const k=e.target.dataset.k;if(!k)return;const i=+e.target.closest("tr").dataset.i;rooms[i][k]=e.target.type==="number"?(e.target.value===""?null:Number(e.target.value)):e.target.value;isExample=false;$("exampleTag").hidden=true;update()});
+$("rows").addEventListener("change",e=>{if(e.target.dataset.k==="type")update()});
+$("rows").addEventListener("click",e=>{const d=e.target.dataset.del;if(d==null)return;rooms.splice(+d,1);renderRows()});
+$("addBtn").onclick=()=>{rooms.push({name:"",type:"bed1",area:null,height:null,window:null});renderRows();$("n"+(rooms.length-1)).focus()};
+$("hDefault").addEventListener("input",renderRows);
+["occ","bathFull","salva","pos"].forEach(id=>{$(id).addEventListener("input",update);$(id).addEventListener("change",update)});
+
+$("copyBtn").onclick=async()=>{
+  const urbLines=URB.map(u=>{const v=urbAns[u.id];const r=v&&u.opts[v];return `- ${u.q}: ${r?r[1]:"da verificare"}`});
+  const txt=["VERIFICA PLANIMETRIA ROMA",meta.address?`Immobile: ${meta.address}`:"","",
+    "ESITO IGIENICO-SANITARIO",$("summary").innerText,...(window.__report||[]).map(c=>`[${LABEL[c.status]}] ${c.title}: ${c.detail} (${c.ref})`),"",
+    "VANI",...rooms.map(r=>`- ${r.name} (${TYPES[r.type]?.label}): ${r.area??"?"} m², h ${r.height??"?"} m, finestra ${r.window??"?"} m²`),"",
+    "CONFORMITÀ URBANISTICA E VINCOLI",...urbLines,"","Pre-verifica indicativa, non sostituisce l'asseverazione di un tecnico abilitato."].filter((l,i,a)=>l!==""||a[i-1]!=="").join("\n");
+  try{await navigator.clipboard.writeText(txt);$("copyBtn").textContent="Copiata";setTimeout(()=>$("copyBtn").textContent="Copia relazione",1500)}
+  catch(e){let ta=$("copyFallback");if(!ta){ta=document.createElement("textarea");ta.id="copyFallback";ta.style.cssText="width:100%;height:220px";$("checks").after(ta)}ta.value=txt;ta.select()}
+};
+
+/* ---------- caricamento ---------- */
+const drop=$("drop");
+["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over")}));
+drop.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(f)handleFile(f)});
+$("file").addEventListener("change",e=>{const f=e.target.files[0];if(f)handleFile(f)});
+function setStatus(t,err){$("status").textContent=t;$("status").classList.toggle("err",!!err)}
+const canvasBlob=c=>new Promise(r=>c.toBlob(r,"image/png"));
+async function imgToCanvas(src){const img=new Image();img.src=src;await img.decode();const c=document.createElement("canvas");c.width=img.naturalWidth;c.height=img.naturalHeight;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0);return c}
+function crop(c,x,y,w,h){const o=document.createElement("canvas");o.width=w;o.height=h;o.getContext("2d").drawImage(c,x,y,w,h,0,0,w,h);return o}
+
+async function handleFile(f){
+  setStatus("Preparazione della tavola…");images=[];
+  try{
+    const pages=[];
+    if(f.type==="application/pdf"||/\.pdf$/i.test(f.name)){
+      if(!window.pdfjsLib)throw new Error("Il lettore PDF non si è caricato. Esporta la planimetria come immagine.");
+      pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+      for(let p=1;p<=Math.min(pdf.numPages,2);p++){const pg=await pdf.getPage(p);const v0=pg.getViewport({scale:1});const sc=Math.min(4,2800/Math.max(v0.width,v0.height));const vp=pg.getViewport({scale:sc});const c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);await pg.render({canvasContext:x,viewport:vp}).promise;pages.push(c)}
+    } else {const url=URL.createObjectURL(f);pages.push(await imgToCanvas(url));URL.revokeObjectURL(url)}
+    const p1=pages[0];
+    $("dropInner").innerHTML=`<img alt="Planimetria caricata" src="${p1.toDataURL("image/jpeg",0.8)}">`;
+    $("fileInfo").textContent=`${f.name} · ${pages.length>1?pages.length+" pagine":"1 pagina"}`;
+    if(sampleFn){
+      const max=(await sampleFn.limits().catch(()=>null))?.images?.maxCount||3;
+      const land=p1.width>=p1.height, parts=[p1];
+      if(land){const w=Math.round(p1.width*0.55);parts.push(crop(p1,0,0,w,p1.height),crop(p1,p1.width-w,0,w,p1.height))}
+      else{const h=Math.round(p1.height*0.55);parts.push(crop(p1,0,0,p1.width,h),crop(p1,0,p1.height-h,p1.width,h))}
+      parts.push(...pages.slice(1));
+      for(const c of parts.slice(0,max))images.push(await canvasBlob(c));
+      setStatus("Pronta. Premi «Leggi la planimetria con Claude».");
+    } else setStatus("Tavola caricata. Inserisci i vani nella tabella leggendo le misure dalla planimetria.");
+    $("readBtn").disabled=!sampleFn||!images.length;
+  }catch(e){setStatus(e.message||"Impossibile aprire il file. Prova con un PNG o JPG.",true)}
+}
+
+/* ---------- lettura con Claude (solo nell'artifact) ---------- */
+const PROMPT=`Stai leggendo la planimetria di un appartamento esistente a Roma (planimetria catastale o di progetto). La prima immagine è la tavola intera; le successive sono ingrandimenti della stessa tavola (o una seconda pagina) per leggere i testi piccoli. Conta ogni vano una sola volta.
+
+Per ogni vano dell'unità restituisci:
+- name: l'etichetta sulla tavola (es. "Soggiorno", "Letto", "Bagno"), o un nome descrittivo breve
+- type: uno tra living, studio, bed1, bed2, kitchen, study, kitchenette, bath, wc, hall, storage, outdoor
+  (studio = vano unico di monolocale; bed1 = camera singola, bed2 = camera doppia: usa il letto disegnato o l'etichetta, altrimenti bed2 se ≥ 14 m², bed1 se minore; kitchenette = angolo cottura nel soggiorno; wc = WC o antibagno senza dotazione completa; hall = corridoio, disimpegno, ingresso; outdoor = balcone, terrazzo, loggia)
+- area_m2: superficie utile netta. Usa quella scritta se c'è, altrimenti calcolala dalle quote, altrimenti stimala dalla scala. null se impossibile.
+- height_m: altezza interna se scritta (spesso "h=2,70" o "H 3,00"), altrimenti null
+- window_m2: superficie totale di finestre e portefinestre del vano se le quote sono scritte (es. "1,20x1,40"), altrimenti stima dal disegno, altrimenti null. 0 se il vano chiaramente non ha finestre.
+- source: "written", "computed" o "estimated"
+
+Restituisci anche:
+- bathroom_complete: true se almeno un bagno mostra chiaramente WC, bidet, doccia o vasca e lavabo; false se manca qualcosa; null se non chiaro
+- floor: il piano indicato sulla tavola (es. "Piano 2°", "Piano terra", "Piano S1"), o null
+- position: uno tra normal, ground, semi, attic in base al piano, o null
+- address: via e numero civico se scritti sulla tavola, senza nomi di persone, o null
+- scale_note: una frase in italiano su come hai ricavato le misure (scala trovata, quote scritte, ecc.)
+- warnings: brevi frasi in italiano su ciò che è incerto o illeggibile
+
+I numeri italiani usano la virgola decimale: convertili con il punto. Rispondi solo con JSON in questa forma:
+{"rooms":[{"name":"Soggiorno","type":"living","area_m2":18.5,"height_m":2.7,"window_m2":2.4,"source":"written"}],"bathroom_complete":true,"floor":"Piano 2°","position":"normal","address":null,"scale_note":"…","warnings":[]}`;
+
+$("readBtn").onclick=async()=>{
+  if(!sampleFn||!images.length)return;
+  ctl=new AbortController();$("readBtn").disabled=true;$("stopBtn").hidden=false;
+  setStatus("Claude sta leggendo la planimetria. Può richiedere un minuto…");
+  try{
+    const res=await sampleFn.json(PROMPT,{images,modelTier:"complex",signal:ctl.signal});
+    const list=Array.isArray(res?.rooms)?res.rooms:[];
+    if(!list.length)throw {code:"empty"};
+    const n=v=>v===null||v===undefined||v===""||!isFinite(+v)?null:+v;
+    rooms=list.map(r=>({name:String(r.name??""),type:TYPES[r.type]?r.type:"study",area:n(r.area_m2),height:n(r.height_m),window:n(r.window_m2),source:r.source}));
+    isExample=false;
+    if(res.bathroom_complete===true)$("bathFull").value="yes";else if(res.bathroom_complete===false)$("bathFull").value="no";
+    if(["normal","ground","semi","attic"].includes(res.position))$("pos").value=res.position;
+    meta={address:typeof res.address==="string"?res.address:"",floor:typeof res.floor==="string"?res.floor:""};
+    const est=rooms.filter(r=>r.source==="estimated").length;
+    $("scaleNote").innerHTML=`<b>Come è stata letta la tavola:</b> ${esc(res.scale_note||"")}${est?` ${est} ${est>1?"valori sono stimati":"valore è stimato"} dal disegno, non da quote scritte.`:""}${Array.isArray(res.warnings)&&res.warnings.length?"<br><b>Attenzione:</b> "+res.warnings.map(esc).join("; "):""}<br>Confronta ogni valore con la tavola prima di fidarti dell'esito.`;
+    renderRows();
+    setStatus(`Letti ${rooms.length} vani. Controlla la tabella, poi l'esito.`);
+  }catch(e){
+    const m={cancelled:"Interrotto.",not_granted:"La lettura con Claude non è stata autorizzata. Puoi inserire i vani a mano.",rate_limited:"Troppe richieste in questo momento. Riprova tra poco.",image_rejected:"L'immagine non è leggibile. Prova con un PNG o JPG della planimetria.",invalid_json:"Risposta non interpretabile. Riprova o ritaglia l'immagine sulla pianta.",refused:"Claude non ha potuto leggere il file. Prova con un'esportazione più pulita.",empty:"Nessun vano trovato. Ritaglia l'immagine sulla pianta e riprova."};
+    setStatus(m[e?.code]||"Lettura non riuscita. Riprova o inserisci i vani a mano.",e?.code!=="cancelled");
+    if(["not_granted","sampling_disabled","images_unavailable"].includes(e?.code)){sampleFn=null;$("aiRow").hidden=true}
+  }finally{$("stopBtn").hidden=true;$("readBtn").disabled=!sampleFn||!images.length}
+};
+$("stopBtn").onclick=()=>ctl?.abort();
+
+/* ---------- avvio ---------- */
+if(!load())rooms=EXAMPLE.map(r=>({...r}));
+renderRows();renderUrb();
+(async()=>{
+  if(!window.claude||typeof window.claude.use!=="function")return;
+  try{const s=await window.claude.use("sample");if(s){const lim=await s.limits().catch(()=>null);if(lim?.images){sampleFn=s;$("aiRow").hidden=false;$("readBtn").disabled=!images.length}}}catch(e){}
+})();
+</script>
+
+</body>
+</html>
